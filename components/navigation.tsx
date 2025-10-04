@@ -19,8 +19,7 @@ const navigation = [
 // Check if we're in dev/preview mode where auth is bypassed
 const isDev = process.env.NODE_ENV === "development"
 const isPreview = process.env.NEXT_PUBLIC_VERCEL_ENV === "preview"
-const isVercelApp = typeof window !== "undefined" && window.location.hostname.includes("vercel.app")
-const shouldBypassAuth = isDev || isPreview || isVercelApp
+const shouldBypassAuth = isDev || isPreview
 
 export function Navigation() {
   const pathname = usePathname()
