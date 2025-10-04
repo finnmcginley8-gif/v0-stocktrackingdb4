@@ -5,6 +5,9 @@
 ALTER TABLE users 
   ADD COLUMN IF NOT EXISTS auth_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_users_auth_id ON users(auth_id);
+
 -- For development/testing: ensure test-user-1 exists
 INSERT INTO users (id, email) 
 VALUES ('test-user-1', 'test@example.com')
@@ -14,16 +17,28 @@ ON CONFLICT (id) DO NOTHING;
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.users (id, email, auth_id, created_at)
+  INSERT INTO public.users (id, email, auth_id, created_at, updated_at)
   VALUES (
     'user_' || NEW.id::text,
     NEW.email,
     NEW.id,
+    NOW(),
     NOW()
-  );
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Log error but don't fail the auth signup
+    RAISE WARNING 'Failed to create user record: %', SQLERRM;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant necessary permissions
+GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
 
 -- Trigger to create user record on auth.users insert
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
