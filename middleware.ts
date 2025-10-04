@@ -2,19 +2,37 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ["/auth/login", "/auth/callback"]
-
-// Development/Preview bypass - auto-login as test user
-const isDev = process.env.NODE_ENV === "development"
-const isPreview = process.env.VERCEL_ENV === "preview"
-const isPublicVercelEnvDev = process.env.NEXT_PUBLIC_VERCEL_ENV === "development"
-const shouldBypassAuth = isDev || isPreview || isPublicVercelEnvDev
+const PUBLIC_ROUTES = ["/auth/login", "/auth/callback", "/api"]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Allow public routes
+  // Allow public routes and API routes
   if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
+    return NextResponse.next()
+  }
+
+  // Auth bypass logic:
+  // 1. Development (npm run dev)
+  // 2. Vercel preview deployments
+  // 3. v0 deployments (*.vercel.app domains from v0)
+  const isDev = process.env.NODE_ENV === "development"
+  const isPreview = process.env.VERCEL_ENV === "preview"
+  const hostname = request.nextUrl.hostname
+  const isV0Deploy = hostname.includes("vercel.app") // v0 deploys to vercel.app
+
+  const shouldBypassAuth = isDev || isPreview || isV0Deploy
+
+  console.log("[middleware]", {
+    pathname,
+    hostname,
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    shouldBypassAuth,
+  })
+
+  if (shouldBypassAuth) {
+    console.log("[middleware] Auth bypassed")
     return NextResponse.next()
   }
 
@@ -73,13 +91,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  // Development/Preview bypass: treat as logged in with test user
-  if (shouldBypassAuth) {
-    // If no user, we'll just allow access
-    // The app will use TEST_USER_ID from constants
-    return response
-  }
 
   // Production: require authentication
   if (!user) {

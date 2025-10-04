@@ -18,7 +18,8 @@ const navigation = [
 
 const isDev = process.env.NODE_ENV === "development"
 const isPreview = process.env.NEXT_PUBLIC_VERCEL_ENV === "preview"
-const shouldBypassAuth = isDev || isPreview
+const isVercelApp = typeof window !== "undefined" && window.location.hostname.includes("vercel.app")
+const shouldBypassAuth = isDev || isPreview || isVercelApp
 
 export function Navigation() {
   const pathname = usePathname()
