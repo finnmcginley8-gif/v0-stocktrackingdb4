@@ -2,7 +2,7 @@ import { TEST_USER_ID } from "./constants"
 
 /**
  * Get the current user ID for API calls
- * In dev/preview: returns TEST_USER_ID
+ * In preview: returns TEST_USER_ID
  * In production: returns user_${auth_id} format
  */
 export function getCurrentUserId(authUserId?: string): string {
@@ -18,12 +18,12 @@ export function getCurrentUserId(authUserId?: string): string {
 }
 
 /**
- * Check if we're in bypass mode (dev/preview)
+ * Check if we're in bypass mode (preview only)
+ * NOTE: We only check VERCEL_ENV because NODE_ENV is "development" even in v0 production
  */
 export function isAuthBypassed(): boolean {
-  const isDev = process.env.NODE_ENV === "development"
+  // NODE_ENV is unreliable in v0 (always "development")
   const isPreview = process.env.VERCEL_ENV === "preview"
-  const isPublicVercelEnvDev = process.env.NEXT_PUBLIC_VERCEL_ENV === "development"
 
-  return isDev || isPreview || isPublicVercelEnvDev
+  return isPreview
 }

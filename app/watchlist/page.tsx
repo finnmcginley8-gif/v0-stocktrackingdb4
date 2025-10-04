@@ -41,9 +41,6 @@ async function getStocks(): Promise<WatchlistResponse> {
     console.log("[v0] Watchlist: response status:", response.status, response.statusText)
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error("[v0] Watchlist: API error response:", errorText)
-
       console.log("[v0] Watchlist: Trying direct database query as fallback")
       return await getStocksDirectly()
     }
@@ -70,24 +67,33 @@ async function getStocksDirectly(): Promise<WatchlistResponse> {
 
     console.log("[v0] Watchlist: Using direct database query")
 
-    const { data: items, error } = await supabaseAdmin
+    const { data: wcaData, error: wcaError } = await supabaseAdmin
       .from("wca_main")
-      .select("symbol, uid, target_price, current_quote, sma200, delta_to_quote, delta_to_sma, priority, logo_url")
+      .select("symbol, uid, target_price, current_quote, sma200, delta_to_quote, delta_to_sma, priority")
       .limit(100)
 
-    if (error) {
-      console.error("[v0] Watchlist: Direct database error:", error)
+    if (wcaError) {
+      console.error("[v0] Watchlist: Direct database error:", wcaError)
       return { items: [], count: 0 }
     }
 
-    console.log("[v0] Watchlist: Direct database query returned:", {
-      itemsCount: items?.length || 0,
-      firstFewSymbols: items?.slice(0, 3).map((item) => item.symbol) || [],
-    })
+    // Fetch logos from tickers table
+    const symbols = wcaData?.map((item) => item.symbol) || []
+    const { data: tickersData } = await supabaseAdmin.from("tickers").select("symbol, logo_url").in("symbol", symbols)
+
+    // Create a map of symbol to logo_url
+    const logoMap = new Map(tickersData?.map((t) => [t.symbol, t.logo_url]) || [])
+
+    // Merge the data
+    const items =
+      wcaData?.map((item) => ({
+        ...item,
+        logo_url: logoMap.get(item.symbol) || null,
+      })) || []
 
     return {
-      items: items || [],
-      count: items?.length || 0,
+      items,
+      count: items.length,
     }
   } catch (error) {
     console.error("[v0] Watchlist: Direct database query failed:", error)

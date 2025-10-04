@@ -2,7 +2,16 @@ export const runtime = "nodejs"
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
 import { type NextRequest, NextResponse } from "next/server"
-import { TEST_USER_ID } from "@/lib/constants"
+import { getCurrentUserId } from "@/lib/get-current-user-id"
+import { createServerClient } from "@/lib/supabase/server"
+
+async function getUserId(request: NextRequest): Promise<string> {
+  const supabase = createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  return getCurrentUserId(user?.id)
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,9 +48,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: tickerError.message }, { status: 500 })
     }
 
+    const userId = await getUserId(request)
+
     // Step 2: Add to user's watchlist
     const watchlistPayload = {
-      user_id: TEST_USER_ID,
+      user_id: userId,
       symbol,
       target_price,
       priority,
@@ -85,6 +96,8 @@ export async function GET(request: NextRequest) {
       limit = 500
     }
 
+    const userId = await getUserId(request)
+
     // Build the query with JOIN
     let supabaseQuery = supabaseAdmin
       .from("user_watchlist")
@@ -105,7 +118,7 @@ export async function GET(request: NextRequest) {
           logo_url
         )
       `)
-      .eq("user_id", TEST_USER_ID)
+      .eq("user_id", userId)
       .limit(limit)
 
     // Add case-insensitive search if query provided
@@ -191,11 +204,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "priority must be one of: None, High, Medium, Low" }, { status: 400 })
     }
 
+    const userId = await getUserId(request)
+
     // Update user's watchlist entry
     const { data: updated, error } = await supabaseAdmin
       .from("user_watchlist")
       .update({ target_price, priority })
-      .eq("user_id", TEST_USER_ID)
+      .eq("user_id", userId)
       .eq("symbol", symbol)
       .select()
       .single()
@@ -232,12 +247,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Symbol or uid is required" }, { status: 400 })
     }
 
+    const userId = await getUserId(request)
+
     // Delete from user's watchlist
-    const { error } = await supabaseAdmin
-      .from("user_watchlist")
-      .delete()
-      .eq("user_id", TEST_USER_ID)
-      .eq("symbol", symbol)
+    const { error } = await supabaseAdmin.from("user_watchlist").delete().eq("user_id", userId).eq("symbol", symbol)
 
     if (error) {
       console.error("Delete error:", error)

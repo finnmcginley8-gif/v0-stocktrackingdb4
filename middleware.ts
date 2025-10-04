@@ -12,19 +12,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Auth bypass logic:
-  // 1. Development (npm run dev)
-  // 2. Vercel preview deployments
-  // Production deployments (VERCEL_ENV === 'production') will require auth
-  const isDev = process.env.NODE_ENV === "development"
+  // NODE_ENV is unreliable in v0 (always "development")
+  // Production deployments have VERCEL_ENV === 'production'
   const isPreview = process.env.VERCEL_ENV === "preview"
 
-  const shouldBypassAuth = isDev || isPreview
+  const shouldBypassAuth = isPreview
 
   console.log("[middleware]", {
     pathname,
     hostname: request.nextUrl.hostname,
-    NODE_ENV: process.env.NODE_ENV,
     VERCEL_ENV: process.env.VERCEL_ENV,
     shouldBypassAuth,
   })
