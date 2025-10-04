@@ -51,7 +51,7 @@ export default function AddStockPage() {
 
       if (response.ok) {
         const data = await response.json()
-        setMessage({ type: "success", text: `Added ${data.stock.uid}` })
+        setMessage({ type: "success", text: `Added ${data.stock.symbol}` }) // Use symbol instead of uid since watchlist items don't have uid
         setSymbol("")
         setTargetPrice("")
         setPriority("None") // Reset priority to default

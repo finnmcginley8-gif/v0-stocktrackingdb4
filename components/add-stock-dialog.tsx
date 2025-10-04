@@ -59,7 +59,7 @@ export function AddStockDialog() {
 
       if (response.ok) {
         const data = await response.json()
-        setMessage({ type: "success", text: `Added ${data.stock.uid}` })
+        setMessage({ type: "success", text: `Added ${data.stock.symbol}` })
         setSymbol("")
         setTargetPrice("")
         setPriority("None")
