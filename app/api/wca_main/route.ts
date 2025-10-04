@@ -6,7 +6,7 @@ import { getCurrentUserId } from "@/lib/get-current-user-id"
 import { createServerClient } from "@/lib/supabase/server"
 
 async function getUserId(request: NextRequest): Promise<string> {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
