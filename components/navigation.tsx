@@ -3,8 +3,10 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Eye, TrendingUp, Bell, Settings, PieChart } from "lucide-react"
+import { Eye, TrendingUp, Bell, Settings, PieChart, LogOut } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
+import { createClient } from "@/lib/supabase/client"
+import { Button } from "@/components/ui/button"
 
 const navigation = [
   { name: "Watchlist", href: "/watchlist", icon: Eye },
@@ -14,11 +16,18 @@ const navigation = [
   { name: "Settings", href: "/settings", icon: Settings },
 ]
 
+const isDev = process.env.NODE_ENV === "development"
+const isPreview = process.env.NEXT_PUBLIC_VERCEL_ENV === "preview"
+const shouldBypassAuth = isDev || isPreview
+
 export function Navigation() {
   const pathname = usePathname()
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 })
   const navRefs = useRef<(HTMLAnchorElement | null)[]>([])
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  const supabase = createClient()
 
   useEffect(() => {
     const activeIndex = navigation.findIndex((item) => item.href === pathname)
@@ -43,6 +52,19 @@ export function Navigation() {
 
     return () => clearTimeout(timer)
   }, [pathname])
+
+  useEffect(() => {
+    if (!shouldBypassAuth) {
+      supabase.auth.getUser().then(({ data }) => {
+        setUserEmail(data.user?.email || null)
+      })
+    }
+  }, [])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    window.location.href = "/auth/login"
+  }
 
   return (
     <nav className="bg-background/80 backdrop-blur-md mb-4 mt-3">
@@ -82,6 +104,18 @@ export function Navigation() {
               )
             })}
           </div>
+
+          {!shouldBypassAuth && userEmail && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="ml-2"
+              title={`Logged in as ${userEmail}`}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </nav>
